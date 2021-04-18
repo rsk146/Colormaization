@@ -4,16 +4,19 @@ import matplotlib.image as img
 import time
 import random
 import math
-
-
+#whole test right now relies on 256x256 test image
 #Grab file and resize to 255 range for project sake
 pic = img.imread("/Users/rsk146/Downloads/berry.png")
 pic *= 255
 pic = pic.astype(int)
 
-#show image
-#plt.imshow(pic)
-#plt.show()
+#reshape tool?
+#pic = np.reshape(pic, (256*256, 3))
+
+
+def show_image(pic):
+    plt.imshow(pic)
+    plt.show()
 
 def grayer(pic):
     R, G, B = pic[:,:, 0], pic[:,:, 1], pic[:, :, 2]
@@ -47,7 +50,8 @@ def kmeans(pic):
         for group in partitions:
             l = 1.0/len(group) if len(group) !=0 else 0
             if l== 0: 
-                print('weird')
+                #print('weird')
+                #print(i)
                 group.append([random.randint(0,255), random.randint(0,255), random.randint(0,255)])
                 l = 1.0    
             new_centers.append([sum(col) for col in zip(*group)])
@@ -55,9 +59,23 @@ def kmeans(pic):
             i+=1
         new_centers = [[round(i) for i in j] for j in new_centers]
         converge = set(map(tuple, centers)) == set(map(tuple, new_centers))
-        print(new_centers)
+        #print(new_centers)
         centers = new_centers
-    return centers, partitions
-kmeans(pic)
+    return centers
 
-#pic = np.reshape(pic, (256*256, 3))
+def recolor(pic, centers):
+    for x in range(256):
+        for y in range(128, 256):
+            pic[x][y] = centers[closest_center(centers, pic[x][y])]            
+
+#256^2=65536 pix
+#bordered =  256^2 - 256*4-4 =64516 pix
+
+
+def basicAgent(pic):
+    grayPic = grayer(pic)
+    centers = kmeans(pic)
+    recolor(pic, centers)
+    #show_image(pic)
+
+#need to reshape the gray image to 2x2 list of 9x1 vectors and find six most similar ones. ignore borders when looping to make this new gray image. 
