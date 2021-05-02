@@ -8,6 +8,8 @@ import itertools
 from itertools import chain
 import json
 from tqdm import tqdm
+from sklearn import preprocessing
+
 #whole test right now relies on 256x256 test image
 #Grab file and resize to 255 range for project sake
 pic = img.imread("/Users/rsk146/Downloads/berry.png")
@@ -180,24 +182,37 @@ def get_avg_dist(pic, centers, k):
 def elbow_method(pic):
     x = [j for j in range(1, 11)]
     y =[]
-    with tqdm(total=10, position=0, leave=True) as pbar:
-        for i in range(1,11):
-            centers = kmeans(pic, i)
-            y.append(get_avg_dist(pic, centers, i))
-            pbar.update(1)
-    with open("elbow.txt", "w") as f:
-        json.dump(x, f)
-        json.dump(y, f)
+    #make and write
+    # with tqdm(total=10, position=0, leave=True) as pbar:
+    #     for i in range(1,11):
+    #         centers = kmeans(pic, i)
+    #         y.append(get_avg_dist(pic, centers, i))
+    #         pbar.update(1)
+    # with open("elbow.txt", "w") as f:
+    #     json.dump(x, f)
+    #     json.dump(y, f)
+    with open("elbow.txt", "r") as f:
+        x = json.load(f)
+    with open("elbow2.txt", "r") as g:
+        y = json.load(g)
+    y = 20*preprocessing.normalize([y])
+    y = y[0]
     data = list(zip(x, y))
     data = np.array(data)
     plt.scatter(data[:,0], data[:,1])
-    plt.show()
-    theta = np.arctan2(data[:,1].max() - data[:,1].min(), data[:,0].max() - data[:,0].min())
+    theta = -.25 + np.arctan2(data[:,1].max() - data[:,1].min(), data[:,0].max() - data[:,0].min())
     rot_matrix = np.array(((np.cos(theta), -1*np.sin(theta)), (np.sin(theta), np.cos(theta))))
-    rot_data = data.dot(rot_matrix)
+    rot_data = np.array([np.dot(rot_matrix, d) for d in data])
+    minY = np.min(rot_data[:,1])
+    minInd = np.where(rot_data == minY)
+    minPoint=rot_data[minInd[0][0]]
+    theta = -1*theta
+    rot_matrix = np.array(((np.cos(theta), -1*np.sin(theta)), (np.sin(theta), np.cos(theta))))
+    finPoint = np.dot(rot_matrix, minPoint)
+    print("Elbow Colors Value:",int(finPoint[0].round()))
     plt.scatter(rot_data[:,0], rot_data[:,1])
     plt.show()
-    print(np.where(rot_data == rot_data.min())[0][0])
+    
 
 # def improved_agent(pic):
 #     grayPic = grayer(pic)
