@@ -22,6 +22,8 @@ pic = pic.astype(int)
 #greyvec?
 #gray_vec_list = [elem for twod in gray_vec for elem in twod]
 
+#scikit kdtree and take the resulting index for 6 nearest neighbors
+#get it back with [int(x/256)][x%256]
 
 def show_image(pic):
     plt.imshow(pic)
@@ -58,7 +60,7 @@ def kmeans(pic, k):
     while not converge:
         for x in range(256):
             for y in range(256):
-                partitions[closest_center(centers, pic[x][y])].append(pic[x][y])
+                partitions[closest_center(centers, pic[x][y], k)].append(pic[x][y])
         new_centers = []
         i = 0
         for group in partitions:
@@ -164,6 +166,7 @@ def basicAgent(pic):
                     colorVal.append(pic[i][j])
                 pic[x][y] = findMaj(colorVal)
                 pbar.update(1)
+    #should dump pic data here lol retard
     show_image(pic)
 
 def get_avg_dist(pic, centers, k):
@@ -174,17 +177,39 @@ def get_avg_dist(pic, centers, k):
     return total/65536.
 
 
-# def elbow_method(pic):
-#     x = [j in range(1, 11)]
-#     y =[]
-#     for i in range(1,11):
-#         centers = kmeans(pic, i)
-#         y.append()
+def elbow_method(pic):
+    x = [j for j in range(1, 11)]
+    y =[]
+    with tqdm(total=10, position=0, leave=True) as pbar:
+        for i in range(1,11):
+            centers = kmeans(pic, i)
+            y.append(get_avg_dist(pic, centers, i))
+            pbar.update(1)
+    with open("elbow.txt", "w") as f:
+        json.dump(x, f)
+        json.dump(y, f)
+    data = list(zip(x, y))
+    data = np.array(data)
+    plt.scatter(data[:,0], data[:,1])
+    plt.show()
+    theta = np.arctan2(data[:,1].max() - data[:,1].min(), data[:,0].max() - data[:,0].min())
+    rot_matrix = np.array(((np.cos(theta), -1*np.sin(theta)), (np.sin(theta), np.cos(theta))))
+    rot_data = data.dot(rot_matrix)
+    plt.scatter(rot_data[:,0], rot_data[:,1])
+    plt.show()
+    print(np.where(rot_data == rot_data.min())[0][0])
+
+# def improved_agent(pic):
+#     grayPic = grayer(pic)
+#     gray_vec = [[[] for j in range(256)] for i in range(256)]
+#     for x in range(1, 255):
+#         for y in range(1, 255):
+#             gray_vec[x][y] = neighbor_vector(grayPic, x, y)
+    
+
+
+elbow_method(pic)
+#basicAgent(pic)
 
 
 
-basicAgent(pic)
-
-#elbow: find rotation angle from arctan of max and min and then take minimum point after applying rotation matrix
-#scikit kdtree and take the resulting index for 6 nearest neighbors
-#get it back with [int(x/256)][x%256]
