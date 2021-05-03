@@ -9,6 +9,8 @@ from itertools import chain
 import json
 from tqdm import tqdm
 from sklearn import preprocessing
+from sklearn import neighbors
+import pickle
 
 #NEW IMPROVED AGENT PLAN:
 #KDTREE AND KNN FOR 15: SOFTMAX ON THOSE 15
@@ -138,8 +140,6 @@ def findMaj(colorVal):
 
 def findLoss(pic):
     pic2 = img.imread("/Users/rsk146/Downloads/berry.png")
-    pic2 *= 255
-    pic2 = pic.astype(int)
     loss = 0
     for x in range(1, 255):
         for y in range(128, 255):
@@ -165,17 +165,32 @@ def basicAgent(pic):
     #show_image(pic)
     # plt.imshow(grayPic, cmap = "gray")
     # plt.show()
-    gray_vec = [[[] for j in range(256)] for i in range(256)]
-    for x in range(1, 255):
-        for y in range(1, 255):
-            gray_vec[x][y] = neighbor_vector(grayPic, x, y)
+    # gray_vec = [[[] for j in range(256)] for i in range(256)]
+    # for x in range(1, 255):
+    #     for y in range(1, 255):
+    #         gray_vec[x][y] = neighbor_vector(grayPic, x, y)
     #run nearest neighbors on the right half
+    gray_vec = [[[] for j in range(256)] for i in range(256)]
+    half_gray_vec = [[[] for j in range(128)] for i in range(256)]
+    for x in range(0, 256):
+        for y in range(0, 256):
+            if x == 0 or x == 255 or y == 0 or y == 255:
+                gray_vec[x][y] = [0., 0., 0., 0., 0., 0., 0., 0., 0.,]
+            else:
+                gray_vec[x][y] = neighbor_vector(grayPic, x, y)
+            if y < 128:
+                half_gray_vec[x][y] =gray_vec[x][y]
     print("gray vec created")
+    gray_vec_list = [elem for twod in half_gray_vec for elem in twod]
+    tree = neighbors.KDTree(gray_vec_list)
+    
     with tqdm(total=127*255, position=0, leave=True) as pbar:
         for x in range(1, 255):
             for y in range(128, 255):
                 #print(x,y)
-                nn = nearest_neighbors(x, y, gray_vec)
+                dist, ind = tree.query([gray_vec[x][y]], k = 6)
+                nn = [(x//128, x%128) for x in ind[0]]
+                #nn = nearest_neighbors(x, y, gray_vec)
                 colorVal = []
                 for point in nn:
                     i, j = point[0], point[1]
@@ -184,10 +199,11 @@ def basicAgent(pic):
                 pbar.update(1)
     #should dump pic data here lol retard
     plt.imshow(pic)
-    plt.savefig("kNNberry.png", bbox_inches='tight', pad_inches=0)
+    #plt.savefig("kNNberry.png", bbox_inches='tight', pad_inches=0)
+    # with open("kNNBerry.txt", "w") as f:
+    #     json.dump(pic, f)
     plt.show()
-    print(findLoss(pic))
-
+    print("Loss:", findLoss(pic))
 
 def get_avg_dist(pic, centers, k):
     total = 0
@@ -254,13 +270,45 @@ def sgd(pic, gray_vec, weight, eta, color):
             break
         loss = loss_prime
         #SGD
-        #
+        print(loss)
         i = random.randint(1,254)
         j = random.randint(1,127)
         x_i = gray_vec[i][j]
-        weight_prime = -eta*(pic[i][j][0]-sigmoid(np.dot(weight, x_i)))*(-sigmoid_prime(np.dot(weight, x_i)))*np.asarray(x_i) + weight
+        weight_prime = -eta*(pic[i][j][color]-sigmoid(np.dot(weight, x_i)))*(-sigmoid_prime(np.dot(weight, x_i)))*np.asarray(x_i) + weight
         weight = weight_prime
-        if count >=5000:
+        if count >=1000:
+            break
+    return weight
+
+def sgd_two(pic, gray_vec, weight, eta):
+    sim_count = 0
+    loss = np.inf
+    count = 0
+    print("initial weight", weight)
+    while(loss > 5000):
+        count+=1 
+        loss_prime = 0
+        for x in range(1, 255):
+            for y in range(1, 128):
+                loss_prime += (np.linalg.norm(pic[x][y] - sigmoid(np.dot(weight, gray_vec[x][y]))))**2
+        if loss_prime > loss:
+            sim_count +=1
+        else:
+            sim_count =0
+        if sim_count > 25:
+            break
+        loss = loss_prime
+        print(loss)
+        i = random.randint(1, 254)
+        j = random.randint(1, 127)
+        x_i = np.asarray(gray_vec[i][j])
+        x_i = x_i.reshape(1,9)
+        coeff = 2*np.linalg.norm(pic[i][j]-sigmoid(np.dot(weight, gray_vec[i][j])))*(-eta)
+        deriv = sigmoid_prime(np.dot(weight, gray_vec[i][j]))
+        colVec = -deriv.reshape(deriv.size, 1)
+        weight = weight - coeff*np.dot(colVec, x_i)
+        #print("Weight: ", weight)
+        if count >= 3000:
             break
     return weight
 
@@ -288,9 +336,71 @@ def improved_agent(pic):
         for y in range(128, 255):
             pic[x][y] = (sigmoid(np.dot(weight_red, gray_vec[x][y])), sigmoid(np.dot(weight_green, gray_vec[x][y])), sigmoid(np.dot(weight_blue, gray_vec[x][y])))
     plt.imshow(pic)
-    plt.savefig("RegressionBerry.png", bbox_inches='tight', pad_inches=0)
+    #plt.savefig("RegressionBerry.png", bbox_inches='tight', pad_inches=0)
+    #with open("regressionBerry.txt", "w") as f:
+        #json.dump(pic, f)
+    print(findLoss(pic))
     plt.show()
 
+def improved_agent_two(pic):
+    pic = pic.astype(float)
+    pic*=1/255
+    grayPic = grayer(pic)
+    gray_vec = [[[] for j in range(256)] for i in range(256)]
+    #initialize inputs
+    for x in range(1, 255):
+        for y in range(1, 255):
+            gray_vec[x][y] = neighbor_vector(grayPic, x, y)
+    #training regimen
+    #initialize weights
+    weight = [[random.uniform(0, 1) for i in range(9)], [random.uniform(0, 1) for i in range(9)], [random.uniform(0, 1) for i in range(9)]]
+    #model = *sigmoid(np.dot(weight_red, gray_vec[x][y]))
+    #learning rate
+    eta = .05
+    #loss and training
+    weight = sgd_two(pic, gray_vec, weight, eta)
+    print(weight)
+    for x in range(1, 255):
+        for y in range(128, 255):
+            pic[x][y] = sigmoid(np.dot(weight, gray_vec[x][y]))
+    plt.imshow(pic)
+    #plt.savefig("RegressionBerry.png", bbox_inches='tight', pad_inches=0)
+    #with open("regressionBerry.txt", "w") as f:
+        #json.dump(pic, f)
+    print(findLoss(pic))
+    plt.show()
+
+
+def new_improved_agent(pic):
+    grayPic = grayer(pic)
+    # centers = kmeans(pic, 10)
+    # with open("kmeans2.txt", "w") as f:
+    #     json.dump(centers, f)
+    #use preran means
+    with open("kmeans2.txt", "r") as f:
+        centers = json.load(f)
+    print("centers found")
+    recolor(pic, centers, 10)
+    #show_image(pic)
+    gray_vec = [[[] for j in range(256)] for i in range(256)]
+    half_gray_vec = [[[] for j in range(128)] for i in range(256)]
+    for x in range(0, 256):
+        for y in range(0, 256):
+            if x == 0 or x == 255 or y == 0 or y == 255:
+                gray_vec[x][y] = [0., 0., 0., 0., 0., 0., 0., 0., 0.,]
+            else:
+                gray_vec[x][y] = neighbor_vector(grayPic, x, y)
+            if y < 128:
+                half_gray_vec[x][y] =gray_vec[x][y]
+    #half_gray_vec = gray_vec[x in range(1)][y in range(0, 128)]
+    #get it back with gray_vec[x//128][x%128]
+    # gray_vec_list = [elem for twod in half_gray_vec for elem in twod]
+    # tree = neighbors.KDTree(gray_vec_list)
+    # dist, ind = tree.query([gray_vec[130][184]], k = 6)
+    
+    #print(tree)
 #elbow_method(pic)
 #basicAgent(pic)
-improved_agent(pic)  
+improved_agent_two(pic)  
+
+#new_improved_agent(pic)
