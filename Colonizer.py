@@ -140,6 +140,10 @@ def findMaj(colorVal):
 
 def findLoss(pic):
     pic2 = img.imread("/Users/rsk146/Downloads/berry.png")
+    pic2 = pic2.astype(float)
+    pic2*=1/255
+    pic = pic2.astype(float)
+    pic*=1/255
     loss = 0
     for x in range(1, 255):
         for y in range(128, 255):
@@ -399,8 +403,9 @@ def new_improved_agent(pic):
     # dist, ind = tree.query([gray_vec[130][184]], k = 6)
     
     #print(tree)
-#elbow_method(pic)
-#basicAgent(pic)
-improved_agent_two(pic)  
 
+
+#elbow_method(pic)
+basicAgent(pic)
+#improved_agent_two(pic)  
 #new_improved_agent(pic)
