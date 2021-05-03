@@ -10,6 +10,10 @@ import json
 from tqdm import tqdm
 from sklearn import preprocessing
 
+#NEW IMPROVED AGENT PLAN:
+#KDTREE AND KNN FOR 15: SOFTMAX ON THOSE 15
+
+
 #whole test right now relies on 256x256 test image
 #Grab file and resize to 255 range for project sake
 pic = img.imread("/Users/rsk146/Downloads/berry.png")
@@ -81,7 +85,7 @@ def kmeans(pic, k):
         centers = new_centers
     return centers
 
-def recolor(pic, centers):
+def recolor(pic, centers, k):
     for x in range(256):
         for y in range(0, 128):
             pic[x][y] = centers[closest_center(centers, pic[x][y], k)]            
@@ -131,7 +135,17 @@ def findMaj(colorVal):
         if m[key] > 3:
             return key
     return colorVal[0]
-        
+
+def findLoss(pic):
+    pic2 = img.imread("/Users/rsk146/Downloads/berry.png")
+    pic2 *= 255
+    pic2 = pic.astype(int)
+    loss = 0
+    for x in range(1, 255):
+        for y in range(128, 255):
+            loss += (np.linalg.norm(pic[x][y]-pic2[x][y]))
+    return loss
+
 def basicAgent(pic):
     grayPic = grayer(pic)
     #run kmeans
@@ -147,7 +161,7 @@ def basicAgent(pic):
     centers = list(centers)
     print("Read kmeans centers")
     print(centers)
-    recolor(pic, centers)
+    recolor(pic, centers, 5)
     #show_image(pic)
     # plt.imshow(grayPic, cmap = "gray")
     # plt.show()
@@ -169,7 +183,11 @@ def basicAgent(pic):
                 pic[x][y] = findMaj(colorVal)
                 pbar.update(1)
     #should dump pic data here lol retard
-    show_image(pic)
+    plt.imshow(pic)
+    plt.savefig("kNNberry.png", bbox_inches='tight', pad_inches=0)
+    plt.show()
+    print(findLoss(pic))
+
 
 def get_avg_dist(pic, centers, k):
     total = 0
@@ -177,7 +195,6 @@ def get_avg_dist(pic, centers, k):
         for j in range(256):
             total += dist(pic[i][j], centers[closest_center(centers, pic[i][j], k)])
     return total/65536.
-
 
 def elbow_method(pic):
     x = [j for j in range(1, 11)]
@@ -212,19 +229,68 @@ def elbow_method(pic):
     print("Elbow Colors Value:",int(finPoint[0].round()))
     plt.scatter(rot_data[:,0], rot_data[:,1])
     plt.show()
-    
 
-# def improved_agent(pic):
-#     grayPic = grayer(pic)
-#     gray_vec = [[[] for j in range(256)] for i in range(256)]
-#     for x in range(1, 255):
-#         for y in range(1, 255):
-#             gray_vec[x][y] = neighbor_vector(grayPic, x, y)
-    
+def sigmoid(z):
+    return 1/(1 + np.exp(-z))
 
+def sigmoid_prime(z):
+    return sigmoid(z)*(1-sigmoid(z))
 
-elbow_method(pic)
+def sgd(pic, gray_vec, weight, eta, color):
+    sim_count = 0
+    loss = np.inf
+    count = 0
+    while(loss > 100):
+        count+=1
+        loss_prime = 0
+        for x in range(1, 255):
+            for y in range(1, 128):
+                loss_prime+=(pic[x][y][color] - sigmoid(np.dot(weight, gray_vec[x][y])))**2
+        if loss_prime > loss:
+            sim_count +=1
+        else:
+            sim_count = 0
+        if sim_count >=25:
+            break
+        loss = loss_prime
+        #SGD
+        #
+        i = random.randint(1,254)
+        j = random.randint(1,127)
+        x_i = gray_vec[i][j]
+        weight_prime = -eta*(pic[i][j][0]-sigmoid(np.dot(weight, x_i)))*(-sigmoid_prime(np.dot(weight, x_i)))*np.asarray(x_i) + weight
+        weight = weight_prime
+        if count >=5000:
+            break
+    return weight
+
+def improved_agent(pic):
+    pic = pic.astype(float)
+    pic*=1/255
+    grayPic = grayer(pic)
+    gray_vec = [[[] for j in range(256)] for i in range(256)]
+    #initialize inputs
+    for x in range(1, 255):
+        for y in range(1, 255):
+            gray_vec[x][y] = neighbor_vector(grayPic, x, y)
+    #training regimen
+    #initialize weights
+    weight_red, weight_green, weight_blue = [random.uniform(0, 1) for i in range(9)], [random.uniform(0, 1) for i in range(9)], [random.uniform(0, 1) for i in range(9)]
+    #model = 255*sigmoid(np.dot(weight_red, gray_vec[x][y]))
+    #learning rate
+    eta = .05
+    #loss and training
+    weight_red, weight_green, weight_blue = sgd(pic, gray_vec, weight_red, eta, 0), sgd(pic, gray_vec, weight_green, eta, 1), sgd(pic, gray_vec, weight_blue, eta, 2)
+    print(weight_red)
+    print(weight_green)
+    print(weight_blue)
+    for x in range(1, 255):
+        for y in range(128, 255):
+            pic[x][y] = (sigmoid(np.dot(weight_red, gray_vec[x][y])), sigmoid(np.dot(weight_green, gray_vec[x][y])), sigmoid(np.dot(weight_blue, gray_vec[x][y])))
+    plt.imshow(pic)
+    plt.savefig("RegressionBerry.png", bbox_inches='tight', pad_inches=0)
+    plt.show()
+
+#elbow_method(pic)
 #basicAgent(pic)
-
-
-
+improved_agent(pic)  
