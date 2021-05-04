@@ -18,7 +18,8 @@ import pickle
 
 #whole test right now relies on 256x256 test image
 #Grab file and resize to 255 range for project sake
-pic = img.imread("/Users/rsk146/Downloads/berry.png")
+image = "berry.png"
+pic = img.imread(image)
 pic *= 255
 pic = pic.astype(int)
 #reshape tool?
@@ -93,7 +94,7 @@ def recolor(pic, centers, k):
             pic[x][y] = centers[closest_center(centers, pic[x][y], k)]            
 
 #256^2=65536 pix
-#bordered =  256^2 - 256*4-4 =64516 pix
+#bordered =  256^2 - 256*4+4 =64516 pix
 
 def neighbor_vector(grayPic, x, y):
     return [round(grayPic[i][j], 2) for i in range(x-1, x+2) for j in range(y-1, y+2)]
@@ -132,22 +133,22 @@ def findMaj(colorVal):
             m[tuple(colorVal[i])]+=1
         else:
             m[tuple(colorVal[i])] = 1
-    c = 0
+    
     for key in m:
         if m[key] > 3:
             return key
     return colorVal[0]
 
 def findLoss(pic):
-    pic2 = img.imread("/Users/rsk146/Downloads/berry.png")
+    pic2 = img.imread(image)
     pic2 = pic2.astype(float)
-    pic2*=1/255
-    pic = pic2.astype(float)
-    pic*=1/255
+    pic2 *= 1/255
+    pic = pic.astype(float)
+    pic *= 1/255
     loss = 0
     for x in range(1, 255):
         for y in range(128, 255):
-            loss += (np.linalg.norm(pic[x][y]-pic2[x][y]))
+            loss += (np.linalg.norm(pic[x][y]-pic2[x][y]))**2
     return loss
 
 def basicAgent(pic):
@@ -186,7 +187,7 @@ def basicAgent(pic):
                 half_gray_vec[x][y] =gray_vec[x][y]
     print("gray vec created")
     gray_vec_list = [elem for twod in half_gray_vec for elem in twod]
-    tree = neighbors.KDTree(gray_vec_list)
+    tree = neighbors.KDTree(np.asarray(gray_vec_list))
     
     with tqdm(total=127*255, position=0, leave=True) as pbar:
         for x in range(1, 255):
@@ -201,7 +202,8 @@ def basicAgent(pic):
                     colorVal.append(pic[i][j])
                 pic[x][y] = findMaj(colorVal)
                 pbar.update(1)
-    #should dump pic data here lol retard
+
+
     plt.imshow(pic)
     #plt.savefig("kNNberry.png", bbox_inches='tight', pad_inches=0)
     # with open("kNNBerry.txt", "w") as f:
@@ -289,7 +291,7 @@ def sgd_two(pic, gray_vec, weight, eta):
     loss = np.inf
     count = 0
     print("initial weight", weight)
-    while(loss > 5000):
+    while(loss > 3000):
         count+=1 
         loss_prime = 0
         for x in range(1, 255):
@@ -315,6 +317,49 @@ def sgd_two(pic, gray_vec, weight, eta):
         if count >= 3000:
             break
     return weight
+
+def sgd_two2(pic, gray_vec, weight, eta):
+    #ignore
+    sim_count = 0
+    loss = np.inf
+    print("initial weight", weight)
+    
+
+    for color in range(3):
+        count = 0
+        # points = list(itertools.product(range(1,255, 16), range(1, 128, 8)))
+        while(count < 50):
+            count+=1 
+            loss_prime = 0
+
+            for x in range(1, 255):
+                for y in range(1, 128):
+                    loss_prime += (pic[x][y][color] - sigmoid(np.dot(weight[color], gray_vec[x][y])))**2
+            if loss_prime > loss:
+                sim_count +=1
+            else:
+                sim_count =0
+            if sim_count > 25:
+                break
+            loss = loss_prime
+            print(loss)
+
+            i = random.randint(1, 254)
+            j = random.randint(1, 127)
+            # i,j = points.pop()
+            x_i = np.asarray(gray_vec[i][j])
+            x_i = x_i.reshape(1,9)
+            coeff = 2*(pic[i][j][color]-sigmoid(np.dot(weight[color], gray_vec[i][j])))*(-eta)
+            # deriv = sigmoid_prime(np.dot(weight[color], gray_vec[i][j]))
+            # colVec = -deriv.reshape(deriv.size, 1)
+            #weight = weight - coeff*np.dot(colVec, x_i)
+            weight[color] = weight[color] - coeff*x_i
+            #print("Weight: ", weight)
+            # if count >= 50:
+            #     break
+    
+    return [[i for i in weight[0][0]], [i for i in weight[1][0]], [i for i in weight[2][0]]]
+    #return weight
 
 def improved_agent(pic):
     pic = pic.astype(float)
@@ -357,7 +402,10 @@ def improved_agent_two(pic):
             gray_vec[x][y] = neighbor_vector(grayPic, x, y)
     #training regimen
     #initialize weights
-    weight = [[random.uniform(0, 1) for i in range(9)], [random.uniform(0, 1) for i in range(9)], [random.uniform(0, 1) for i in range(9)]]
+    # startWeight = 0
+    # weight = [[startWeight for i in range(9)], [startWeight for i in range(9)], [startWeight for i in range(9)]]
+    weight = [[random.uniform(-1, 1) for i in range(9)], [random.uniform(-1, 1) for i in range(9)], [random.uniform(-1, 1) for i in range(9)]]
+
     #model = *sigmoid(np.dot(weight_red, gray_vec[x][y]))
     #learning rate
     eta = .05
@@ -371,7 +419,7 @@ def improved_agent_two(pic):
     #plt.savefig("RegressionBerry.png", bbox_inches='tight', pad_inches=0)
     #with open("regressionBerry.txt", "w") as f:
         #json.dump(pic, f)
-    print(findLoss(pic))
+    print(findLoss(pic*255))
     plt.show()
 
 
