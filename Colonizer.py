@@ -452,8 +452,44 @@ def new_improved_agent(pic):
     
     #print(tree)
 
+def neural_agent(pic):
+    import tensorflow as tf
+
+    pic = pic.astype(float)
+    pic*=1/255
+    grayPic = grayer(pic)
+    gray_vec = [[[] for j in range(256)] for i in range(256)]
+    #initialize inputs
+    for x in range(1, 255):
+        for y in range(1, 255):
+            gray_vec[x][y] = neighbor_vector(grayPic, x, y)
+
+    x_train = [[gray_vec[i][j]] for j in range(1,128) for i in range(1,255)]
+    y_train = [pic[i][j][0] for j in range(1,128) for i in range(1,255)]
+    # x_train = np.asarray(x_train)
+    # y_train = np.asarray(y_train)
+
+    x_train = np.asarray(x_train).reshape((1, 127*254, 9))
+    y_train = np.asarray(y_train).reshape((1, 127*254, 1))
+
+    model = tf.keras.models.Sequential([
+    tf.keras.layers.Dense(128),
+    tf.keras.layers.Dense(255, activation='softmax')
+    ])
+
+    model.compile(optimizer='rmsprop', loss='mse', metrics=['accuracy'])
+    model.fit(x_train, y_train, epochs=2)
+    
+    for x in range(1, 255):
+        for y in range(128, 255):
+            reshaped = np.asarray(gray_vec[x][y]).reshape(9,)
+            R = model.predict(reshaped)
+            pic[x][y] = (R, 0, 0)
+    
+    plt.show(pic)
 
 #elbow_method(pic)
-basicAgent(pic)
+# basicAgent(pic)
+neural_agent(pic)
 #improved_agent_two(pic)  
 #new_improved_agent(pic)
