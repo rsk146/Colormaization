@@ -154,19 +154,19 @@ def findLoss(pic):
 def basicAgent(pic):
     grayPic = grayer(pic)
     #run kmeans
-    # centers = kmeans(pic, 5)
+    centers = kmeans(pic, 7)
     # with open("kmeans.txt", "w") as f:
     #     json.dump(centers, f)
     # print("wrote kmeans")
 
     #use preran kmeans
-    centers = []
-    with open("kmeans.txt", "r") as f:
-        centers = json.load(f)
-    centers = list(centers)
-    print("Read kmeans centers")
+    # centers = []
+    # with open("kmeans3.txt", "r") as f:
+    #     centers = json.load(f)
+    # centers = list(centers)
+    # print("Read kmeans centers")
     print(centers)
-    recolor(pic, centers, 5)
+    recolor(pic, centers, 7)
     #show_image(pic)
     # plt.imshow(grayPic, cmap = "gray")
     # plt.show()
@@ -433,7 +433,7 @@ def new_improved_agent(pic):
         centers = json.load(f)
     print("centers found")
     recolor(pic, centers, 10)
-    #show_image(pic)
+    show_image(pic)
     gray_vec = [[[] for j in range(256)] for i in range(256)]
     half_gray_vec = [[[] for j in range(128)] for i in range(256)]
     for x in range(0, 256):
@@ -522,8 +522,8 @@ def neural_agent(pic):
     plt.imshow(pic)
     plt.show()
 
-#elbow_method(pic)
-# basicAgent(pic)
-neural_agent(pic)
+# elbow_method(pic)
+basicAgent(pic)
+# neural_agent(pic)
 # improved_agent_two(pic)  
-#new_improved_agent(pic)
+# new_improved_agent(pic)
