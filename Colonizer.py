@@ -464,32 +464,66 @@ def neural_agent(pic):
         for y in range(1, 255):
             gray_vec[x][y] = neighbor_vector(grayPic, x, y)
 
-    x_train = [[gray_vec[i][j]] for j in range(1,128) for i in range(1,255)]
-    y_train = [pic[i][j][0] for j in range(1,128) for i in range(1,255)]
+    x_train = [list(gray_vec[i][j]) for j in range(1,128) for i in range(1,255)]
+    y_trainR = [pic[i][j][0] for j in range(1,128) for i in range(1,255)]
+    y_trainG = [pic[i][j][1] for j in range(1,128) for i in range(1,255)]
+    y_trainB = [pic[i][j][2] for j in range(1,128) for i in range(1,255)]
     # x_train = np.asarray(x_train)
     # y_train = np.asarray(y_train)
 
-    x_train = np.asarray(x_train).reshape((1, 127*254, 9))
-    y_train = np.asarray(y_train).reshape((1, 127*254, 1))
+    x_train = list(x_train)
+    y_trainR = list(y_trainR)
+    y_trainG = list(y_trainG)
+    y_trainB = list(y_trainB)
 
-    model = tf.keras.models.Sequential([
-    tf.keras.layers.Dense(128),
-    tf.keras.layers.Dense(255, activation='softmax')
+    modelR = tf.keras.models.Sequential([
+    tf.keras.layers.Dense(27, activation= 'softmax', input_shape=(9,)),
+    tf.keras.layers.Dense(9, activation='relu'),
+    tf.keras.layers.Dense(256, activation='relu')
+    ])
+    modelG = tf.keras.models.Sequential([
+    tf.keras.layers.Dense(27, activation= 'softmax', input_shape=(9,)),
+    tf.keras.layers.Dense(9, activation='relu'),
+    tf.keras.layers.Dense(256, activation='relu')
+    ])
+    modelB = tf.keras.models.Sequential([
+    tf.keras.layers.Dense(27, activation= 'softmax', input_shape=(9,)),
+    tf.keras.layers.Dense(9, activation='relu'),
+    tf.keras.layers.Dense(256, activation='relu')
     ])
 
-    model.compile(optimizer='rmsprop', loss='mse', metrics=['accuracy'])
-    model.fit(x_train, y_train, epochs=2)
+    lossfc = 'mean_squared_logarithmic_error'
+
+    modelR.compile(optimizer='rmsprop', loss=lossfc, metrics=['accuracy'])
+    modelG.compile(optimizer='rmsprop', loss=lossfc, metrics=['accuracy'])
+    modelB.compile(optimizer='rmsprop', loss=lossfc, metrics=['accuracy'])
+
+    numTrials = 7
+    modelR.fit(x_train, y_trainR, epochs=numTrials)
+    modelG.fit(x_train, y_trainG, epochs=numTrials)
+    modelB.fit(x_train, y_trainB, epochs=numTrials)
     
+    x_test = [list(gray_vec[i][j]) for j in range(1,255) for i in range(1,255)]
+
+    R = modelR.predict(x_test)
+    G = modelG.predict(x_test)
+    B = modelB.predict(x_test)
+
     for x in range(1, 255):
         for y in range(128, 255):
-            reshaped = np.asarray(gray_vec[x][y]).reshape(9,)
-            R = model.predict(reshaped)
-            pic[x][y] = (R, 0, 0)
+            pixIndex = (x-1)*254+(y-1)
+            indexR = np.argmax(R[pixIndex])
+            indexG = np.argmax(G[pixIndex])
+            indexB = np.argmax(B[pixIndex])
+            pic[x][y] = (indexR/255, indexG/255, indexB/255)
     
-    plt.show(pic)
+    
+    print(findLoss(pic*255))
+    plt.imshow(pic)
+    plt.show()
 
 #elbow_method(pic)
 # basicAgent(pic)
 neural_agent(pic)
-#improved_agent_two(pic)  
+# improved_agent_two(pic)  
 #new_improved_agent(pic)
