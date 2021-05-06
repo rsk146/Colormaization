@@ -186,16 +186,16 @@ def basicAgent(pic):
             if y < 128:
                 half_gray_vec[x][y] =gray_vec[x][y]
     print("gray vec created")
-    gray_vec_list = [elem for twod in half_gray_vec for elem in twod]
-    tree = neighbors.KDTree(np.asarray(gray_vec_list))
+    #gray_vec_list = [elem for twod in half_gray_vec for elem in twod]
+    #tree = neighbors.KDTree(np.asarray(gray_vec_list))
     
     with tqdm(total=127*255, position=0, leave=True) as pbar:
         for x in range(1, 255):
             for y in range(128, 255):
                 #print(x,y)
-                dist, ind = tree.query([gray_vec[x][y]], k = 6)
-                nn = [(x//128, x%128) for x in ind[0]]
-                #nn = nearest_neighbors(x, y, gray_vec)
+                #dist, ind = tree.query([gray_vec[x][y]], k = 6)
+                #nn = [(x//128, x%128) for x in ind[0]]
+                nn = nearest_neighbors(x, y, gray_vec)
                 colorVal = []
                 for point in nn:
                     i, j = point[0], point[1]
@@ -230,6 +230,7 @@ def elbow_method(pic):
     # with open("elbow.txt", "w") as f:
     #     json.dump(x, f)
     #     json.dump(y, f)
+    #read from precomputed elbow
     with open("elbow.txt", "r") as f:
         x = json.load(f)
     with open("elbow2.txt", "r") as g:
@@ -361,6 +362,7 @@ def sgd_two2(pic, gray_vec, weight, eta):
     return [[i for i in weight[0][0]], [i for i in weight[1][0]], [i for i in weight[2][0]]]
     #return weight
 
+#bad first attempt
 def improved_agent(pic):
     pic = pic.astype(float)
     pic*=1/255
@@ -422,7 +424,7 @@ def improved_agent_two(pic):
     print(findLoss(pic*255))
     plt.show()
 
-
+#useless function
 def new_improved_agent(pic):
     grayPic = grayer(pic)
     # centers = kmeans(pic, 10)
@@ -524,6 +526,6 @@ def neural_agent(pic):
 
 # elbow_method(pic)
 basicAgent(pic)
-# neural_agent(pic)
-# improved_agent_two(pic)  
+neural_agent(pic)
+improved_agent_two(pic)  
 # new_improved_agent(pic)
